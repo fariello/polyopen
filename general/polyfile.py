@@ -9,12 +9,30 @@ import zstandard as zstd
 import requests
 from urllib.parse import urlparse
 from tqdm import tqdm
+import ftplib
+import ftputil
 import os
 
-class FileLineReader:
+
+class FTPSessionWrapper(ftplib.FTP):
+    """
+    FTPSessionWrapper as described in https://ftputil.sschwarzer.net/documentation
+    """
+
+    def __init__(self, host, userid, password, port):
+        """Act like ftplib.FTP's constructor but connect to another port."""
+        ftplib.FTP.__init__(self)
+        self.connect(host, port)
+        self.login(userid, password)
+        pass
+
+    pass
+
+
+class PolyReader:
     """
     A class used to read files line by line, with support for gzip, bz2, and zst compression formats,
-    as well as remote files over SFTP.
+    as well as remote files over HTTP, HTTPS, FTP, SSH, and SFTP.
 
     ...
 
@@ -22,14 +40,6 @@ class FileLineReader:
     ----------
     filename : str
         a string representing the file path or URL to read
-    show_progress : bool
-        a boolean indicating whether to show a progress bar (default is False)
-    file : io.TextIOWrapper or gzip.GzipFile or bz2.BZ2File or paramiko.SFTPFile
-        the file object for reading
-    sftp : paramiko.SFTPClient
-        the SFTP client for reading from SFTP servers
-    progress : tqdm.tqdm
-        the progress bar object
 
     Methods
     -------
@@ -41,7 +51,7 @@ class FileLineReader:
 
     def __init__(self, filename: str, show_progress: bool = False):
         """
-        Initialize FileLineReader with a filename.
+        Initialize PolyReader with a filename.
 
         :param filename: The name of the file to read.
         :param show_progress: Whether to show a progress bar.
@@ -49,8 +59,9 @@ class FileLineReader:
         self.filename = filename
         self.show_progress = show_progress
         self._fh = None
-        self.sftp = None
-        self.progress = None
+        self._sftp = None
+        self._ftp = None
+        self._progress = None
         self._request_iterator = False
 
     def __enter__(self):
@@ -68,7 +79,7 @@ class FileLineReader:
 
     def __iter__(self):
         """
-        Make the FileLineReader object iterable.
+        Make the PolyReader object iterable.
         """
         return self
 
@@ -82,8 +93,8 @@ class FileLineReader:
             line = self._fh.readline()
             pass
 
-        if self.show_progress and self.progress is not None:
-            self.progress.update(len(line))
+        if self.show_progress and self._progress is not None:
+            self._progress.update(len(line))
 
         if not line:
             # End of file
@@ -120,7 +131,7 @@ class FileLineReader:
             else:
                 self._fh = f
                 pass
-            self.sftp = sftp
+            self._sftp = sftp
         elif  parsed.scheme in ('http', 'https'):
             response = requests.get(self.filename, stream=True)
             if self.filename.endswith(".zst"):
@@ -150,7 +161,7 @@ class FileLineReader:
         if self.show_progress:
             file_size = self._get_file_size()
             if file_size is not None:
-                self.progress = tqdm(total=file_size, unit='B', unit_scale=True)
+                self._progress = tqdm(total=file_size, unit='B', unit_scale=True)
                 pass
             pass
         pass
@@ -159,8 +170,8 @@ class FileLineReader:
         """
         Get the size of the file in bytes.
         """
-        if self.sftp is not None:
-            return self.sftp.stat(self.filename).st_size
+        if self._sftp is not None:
+            return self._sftp.stat(self.filename).st_size
         else:
             return os.path.getsize(self.filename)
         pass
@@ -171,20 +182,46 @@ class FileLineReader:
         """
         if self._fh is not None:
             self._fh.close()
-        if self.sftp is not None:
-            self.sftp.close()
-        if self.progress is not None:
-            self.progress.close()
+        if self._sftp is not None:
+            self._sftp.close()
+        if self._progress is not None:
+            self._progress.close()
             pass
         pass
 
     pass
 
 
-class FileWriter:
+class PolyWriter:
+    """
+    A class used to write files line by line, with support for gzip, bz2, and zst compression formats,
+    as well as remote files over HTTP, HTTPS, FTP, SSH, and SFTP.
+
+    ...
+
+    Attributes
+    ----------
+    filename : str
+        a string representing the file path or URL to read
+    show_progress : bool
+        a boolean indicating whether to show a progress bar (default is False)
+    file : io.TextIOWrapper or gzip.GzipFile or bz2.BZ2File or paramiko.SFTPFile
+        the file object for reading
+    sftp : paramiko.SFTPClient
+        the SFTP client for reading from SFTP servers
+    progress : tqdm.tqdm
+        the progress bar object
+
+    Methods
+    -------
+    open():
+        Opens the file for reading, decompressing it on the fly if necessary.
+    close():
+        Closes the file.
+    """
     def __init__(self, filename: str):
         """
-        Initialize FileWriter with a filename.
+        Initialize PolyWriter with a filename.
 
         :param filename: The name of the file to write to.
         """
@@ -212,28 +249,50 @@ class FileWriter:
         """
         parsed = urlparse(self.filename)
 
-        if parsed.scheme in ('sftp', 'ssh'):
+        if parsed.scheme == 'ftp':
+            print("FTP\n"
+                  f"  hostname={parsed.hostname}\n"
+                  f"  port={parsed.port}\n"
+                  f"  username={parsed.username}\n"
+                  f"  password={parsed.password}\n"
+                  f"  path={parsed.path}"
+            )
+            # self._ftp = FTP().connect(host=parsed.hostname, port=int(parsed.port))
+            # self._ftp.login(parsed.username, parsed.password)
+            # self.remote_filename = os.path.basename(parsed.path)
+            self._ftp = ftputil.FTPHost(parsed.hostname, parsed.username, parsed.password, port=parsed.port,
+                                        session_factory=FTPSessionWrapper)
+            self.remote_filename = parsed.path
+            self._fh = self._ftp.open(parsed.path, 'wb')
+            if parsed.path.endswith('.zst'):
+                dctx = zstd.ZstdCompressor(level=22)
+                self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
+            elif self.filename.endswith('.bz2'):
+                self._fh = bz2.open(self._fh, compresslevel=9, mode='wt')
+            elif self.filename.endswith('.gz'):
+                self._fh = gzip.open(self._fh, compresslevel=9, mode='wt')
+                pass
+            pass
+        elif parsed.scheme in ('sftp', 'ssh'):
             # Handle SFTP URLs
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             client.connect(parsed.hostname, username=parsed.username, password=parsed.password)
             sftp = client.open_sftp()
             try:
-                f = sftp.file(parsed.path, 'wt')
+                self._fh = sftp.file(parsed.path, 'wt')
             except FileNotFoundError as err:
                 print(f"ERROR: No such file found: {self.filename}")
                 return exit(1)
             if self.filename.endswith('.zst'):
                 dctx = zstd.ZstdCompressor(level=22)
-                self._fh = io.TextIOWrapper(dctx.stream_writer(f), encoding='utf-8')
+                self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
             elif self.filename.endswith('.bz2'):
-                self._fh = bz2.open(f, compresslevel=9, mode='wt')
+                self._fh = bz2.open(self._fh, compresslevel=9, mode='wt')
             elif self.filename.endswith('.gz'):
-                self._fh = gzip.open(f, compresslevel=9, mode='wt')
-            else:
-                self._fh = f
+                self._fh = gzip.open(self._fh, compresslevel=9, mode='wt')
                 pass
-            self.sftp = sftp
+            self._sftp = sftp
         else:
             if self.filename.endswith('.zst'):
                 cctx = zstd.ZstdCompressor()
@@ -261,6 +320,8 @@ class FileWriter:
         """
         if self._fh is not None:
             self._fh.close()
+            if self._ftp is not None:
+                self._ftp.close()
             pass
         pass
 
@@ -309,7 +370,7 @@ def main():
     if args.read:
         for input_file in args.files:
             print(f"TESTING reading {input_file}")
-            with FileLineReader(input_file) as reader:
+            with PolyReader(input_file) as reader:
                 line_count = 0
                 t0 = time.monotonic()
                 bytes_count = 0
@@ -323,11 +384,11 @@ def main():
             pass
         pass
     else:
+        print(f"Will Read from {args.input_file}")
         for output_file in args.files:
-            with FileWriter(output_file) as writer:
-                print(f"Writing {writer.filename}")
-                with FileLineReader(args.input_file) as reader:
-                    print(f"Reading {reader.filename}")
+            with PolyReader(args.input_file) as reader:
+                with PolyWriter(output_file) as writer:
+                    print(f"Writing {writer.filename}")
                     line_count = 0
                     t0 = time.monotonic()
                     bytes_count = 0
