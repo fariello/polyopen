@@ -272,6 +272,7 @@ class PolyWriter:
         """
         self.filename = filename
         self._fh = None
+        self._ftp = None
         pass
 
     def __enter__(self):
@@ -338,7 +339,7 @@ class PolyWriter:
             pass
         pass
 
-    def open(self):
+    def open(self) -> 'PolyWriter':
         """
         Open the file for writing, compressing it on the fly if necessary.
         """
@@ -351,7 +352,7 @@ class PolyWriter:
         else:
             self._wrap_local()
             pass
-        pass
+        return self
 
     def write(self, data):
         """
