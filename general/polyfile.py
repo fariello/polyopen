@@ -371,6 +371,7 @@ class PolyReader:
             # Open the file in text read mode if no decompression is needed
             self._fh = open(self.filename, 'r')
             pass  # Ensure proper auto indentation
+        print(f"self._fh={self._fh}")
         pass  # Ensure proper auto indentation
 
     def open(self) -> 'PolyReader':
@@ -406,7 +407,7 @@ class PolyReader:
                 self._progress = tqdm(total=file_size, unit='B', unit_scale=True)
                 pass  # Ensure proper auto indentation
             pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+        return self
 
     def _get_file_size(self) -> int:
         """
