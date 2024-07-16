@@ -371,7 +371,6 @@ class PolyReader:
             # Open the file in text read mode if no decompression is needed
             self._fh = open(self.filename, 'r')
             pass  # Ensure proper auto indentation
-        print(f"self._fh={self._fh}")
         pass  # Ensure proper auto indentation
 
     def open(self) -> 'PolyReader':
@@ -464,7 +463,7 @@ class PolyWriter:
 
     Methods
     -------
-    open() -> 'PolyWriter':
+    open(append: bool = False, backup: bool = True) -> 'PolyWriter':
         Opens the file for writing, compressing it on the fly if necessary.
     write(data):
         Writes data to the file.
@@ -484,6 +483,7 @@ class PolyWriter:
         self.filename = filename
         self._fh = None
         self._ftp = None
+        self._sftp = None
         pass  # Ensure proper auto indentation
 
     def __enter__(self) -> 'PolyWriter':
@@ -522,7 +522,7 @@ class PolyWriter:
         self.close()
         pass  # Ensure proper auto indentation
 
-    def _wrap_ftp(self, parsed: ParseResult):
+    def _wrap_ftp(self, parsed: ParseResult, append: bool, backup: bool):
         """
         Wrap self._fh to handle FTP connections and file operations.
 
@@ -533,6 +533,10 @@ class PolyWriter:
         ----------
         parsed : ParseResult
             The parsed URL containing the FTP connection details and file path.
+        append : bool
+            Whether to open the file in append mode.
+        backup : bool
+            Whether to create a backup of the file if it exists.
 
         Returns
         -------
@@ -541,18 +545,61 @@ class PolyWriter:
         self._ftp = ftputil.FTPHost(parsed.hostname, parsed.username, parsed.password, port=parsed.port,
                                     session_factory=FTPSessionWrapper)
         self.remote_filename = parsed.path
-        self._fh = self._ftp.open(parsed.path, 'wb')
+
+        if backup and self._ftp.path.exists(parsed.path):
+            num = 1
+            backup_filename = f"{parsed.path}.{num:03d}.bu"
+            while self._ftp.path.exists(backup_filename):
+                num += 1
+                backup_filename = f"{parsed.path}.{num:03d}.bu"
+            self._ftp.rename(parsed.path, backup_filename)
+
+        mode = 'ab' if append else 'wb'
+        self._fh = self._ftp.open(parsed.path, mode)
         if parsed.path.endswith('.zst'):
             dctx = zstd.ZstdCompressor(level=22)
             self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
-            self._fh = bz2.open(self._fh, compresslevel=9, mode='wt')
+            self._fh = bz2.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         elif self.filename.endswith('.gz'):
-            self._fh = gzip.open(self._fh, compresslevel=9, mode='wt')
-            pass  # Ensure proper auto indentation
+            self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         pass  # Ensure proper auto indentation
 
-    def _wrap_ssh(self, parsed: ParseResult):
+    def _ssh_backup_if(self, sftp, path):
+        """
+        Backup the specified file on the SSH/SFTP server if it exists.
+
+        This method creates a backup of the file if it exists by renaming it
+        with a .bu extension and an incrementing number.
+
+        Parameters
+        ----------
+        sftp : paramiko.SFTPClient
+            The SFTP client instance.
+        path : str
+            The path of the file to be backed up.
+
+        Returns
+        -------
+        None
+        """
+        try:
+            sftp.stat(path)
+            num = 1
+            backup_filename = f"{path}.{num:03d}.bu"
+            while True:
+                try:
+                    sftp.stat(backup_filename)
+                    num += 1
+                    backup_filename = f"{path}.{num:03d}.bu"
+                except FileNotFoundError:
+                    break
+            sftp.rename(path, backup_filename)
+        except FileNotFoundError:
+            pass
+        pass  # Ensure proper auto indentation
+
+    def _wrap_ssh(self, parsed: ParseResult, append: bool, backup: bool):  # noqa: C901
         """
         Wrap self._fh to handle SSH/SFTP connections and file operations.
 
@@ -563,18 +610,25 @@ class PolyWriter:
         ----------
         parsed : ParseResult
             The parsed URL containing the SSH/SFTP connection details and file path.
+        append : bool
+            Whether to open the file in append mode.
+        backup : bool
+            Whether to create a backup of the file if it exists.
 
         Returns
         -------
         None
         """
-        # Handle SFTP URLs
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.connect(parsed.hostname, username=parsed.username, password=parsed.password)
         sftp = client.open_sftp()
+
+        if backup:
+            self._ssh_backup_if(sftp, parsed.path)
+
         try:
-            self._fh = sftp.file(parsed.path, 'wt')
+            self._fh = sftp.file(parsed.path, 'a' if append else 'w')
         except FileNotFoundError as err:
             print(f"ERROR: No such file found: {self.filename}")
             return exit(1), err
@@ -582,61 +636,86 @@ class PolyWriter:
             dctx = zstd.ZstdCompressor(level=22)
             self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
-            self._fh = bz2.open(self._fh, compresslevel=9, mode='wt')
+            self._fh = bz2.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         elif self.filename.endswith('.gz'):
-            self._fh = gzip.open(self._fh, compresslevel=9, mode='wt')
-            pass  # Ensure proper auto indentation
+            self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         self._sftp = sftp
         pass  # Ensure proper auto indentation
 
-    def _wrap_local(self):
+    def _wrap_local(self, append: bool, backup: bool):
         """
         Wrap self._fh to handle local file operations with optional compression.
 
         This method opens the specified local file for writing and wraps it with appropriate
-        compression handlers based on the file extension.
+        compression handlers based on the file extension. It also handles file appending and backup creation.
 
         Parameters
         ----------
-        None
+        append : bool
+            Whether to open the file in append mode.
+        backup : bool
+            Whether to create a backup of the file if it exists.
 
         Returns
         -------
         None
         """
+        if backup and os.path.exists(self.filename):
+            num = 1
+            backup_filename = f"{self.filename}.{num:03d}.bu"
+            while os.path.exists(backup_filename):
+                num += 1
+                backup_filename = f"{self.filename}.{num:03d}.bu"
+            os.rename(self.filename, backup_filename)
+
+        mode = 'ab' if append else 'wb'
         if self.filename.endswith('.zst'):
             cctx = zstd.ZstdCompressor()
-            self._fh = io.TextIOWrapper(cctx.stream_writer(open(self.filename, 'wb')), encoding='utf-8')
+            self._fh = io.TextIOWrapper(cctx.stream_writer(open(self.filename, mode)), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
-            self._fh = bz2.open(self.filename, 'wt')
+            self._fh = bz2.open(self.filename, 'at' if append else 'wt')
         elif self.filename.endswith('.gz'):
-            self._fh = gzip.open(self.filename, 'wt')
+            self._fh = gzip.open(self.filename, 'at' if append else 'wt')
         else:
-            self._fh = open(self.filename, 'w')
-            pass  # Ensure proper auto indentation
+            self._fh = open(self.filename, 'a' if append else 'w')
         pass  # Ensure proper auto indentation
 
-    def open(self) -> 'PolyWriter':
+    def open(self, append: bool = False, backup: bool = True) -> 'PolyWriter':
         """
         Open the file for writing, compressing it on the fly if necessary.
 
         This method determines the file type and source, and opens the file
         with the appropriate handler and compression method.
 
+        Parameters
+        ----------
+        append : bool, optional
+            Whether to open the file in append mode (default is False).
+        backup : bool, optional
+            Whether to create a backup of the file if it exists (default is True).
+
         Returns
         -------
         PolyWriter
             The PolyWriter instance with the file opened for writing.
+
+        Raises
+        ------
+        ValueError
+            If both append and backup are True.
         """
+        if append and backup:
+            raise ValueError("Cannot have both append and backup set to True.")
+
         parsed = urlparse(self.filename)
 
         if parsed.scheme == 'ftp':
-            self._wrap_ftp(parsed)
+            self._wrap_ftp(parsed, append, backup)
         elif parsed.scheme in ('sftp', 'ssh'):
-            self._wrap_ssh(parsed)
+            self._wrap_ssh(parsed, append, backup)
         else:
-            self._wrap_local()
-            pass  # Ensure proper auto indentation
+            self._wrap_local(append, backup)
+
         return self
 
     def write(self, data):
@@ -669,6 +748,8 @@ class PolyWriter:
             self._fh.close()
             if self._ftp is not None:
                 self._ftp.close()
+            if self._sftp is not None:
+                self._sftp.close()
             pass  # Ensure proper auto indentation
         pass  # Ensure proper auto indentation
 
