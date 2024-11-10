@@ -121,9 +121,9 @@ class FTPSessionWrapper(ftplib.FTP):
         self.connect(host, port)
         # Log in to the FTP server with the provided username and password
         self.login(userid, password)
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
-    pass  # Ensure proper auto indentation
+    pass  # for auto-indentation
 
 
 class PolyReader:
@@ -200,7 +200,7 @@ class PolyReader:
         None
         """
         self.close()
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def __iter__(self) -> 'PolyReader':
         """
@@ -235,7 +235,7 @@ class PolyReader:
             line = next(self._fh)
         else:
             line = self._fh.readline()
-            pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
 
         if self.show_progress and self._progress is not None:
             self._progress.update(len(line))
@@ -295,8 +295,8 @@ class PolyReader:
         elif self.filename.endswith('.gz'):
             # Wrap the file handle with a Gzip file object for decompression
             self._fh = gzip.GzipFile(fileobj=self._fh)
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
 
     def _wrap_http(self):
         """
@@ -337,8 +337,8 @@ class PolyReader:
             self._fh = response.iter_lines()
             # Indicate that the request iterator will yield bytes that need decoding
             self._request_iterator = True
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
 
     def _wrap_local(self):
         """
@@ -370,8 +370,8 @@ class PolyReader:
         else:
             # Open the file in text read mode if no decompression is needed
             self._fh = open(self.filename, 'r')
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
 
     def open(self) -> 'PolyReader':
         """
@@ -397,15 +397,15 @@ class PolyReader:
         # Handle local files
         else:
             self._wrap_local()
-            pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
 
         # If show_progress is enabled, initialize the progress bar
         if self.show_progress:
             file_size = self._get_file_size()
             if file_size is not None:
                 self._progress = tqdm(total=file_size, unit='B', unit_scale=True)
-                pass  # Ensure proper auto indentation
-            pass  # Ensure proper auto indentation
+                pass  # for auto-indentation
+            pass  # for auto-indentation
         return self
 
     def _get_file_size(self) -> int:
@@ -445,10 +445,10 @@ class PolyReader:
             self._sftp.close()
         if self._progress is not None:
             self._progress.close()
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
 
-    pass  # Ensure proper auto indentation
+    pass  # for auto-indentation
 
 
 class PolyWriter:
@@ -484,7 +484,7 @@ class PolyWriter:
         self._fh = None
         self._ftp = None
         self._sftp = None
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def __enter__(self) -> 'PolyWriter':
         """
@@ -520,7 +520,7 @@ class PolyWriter:
         None
         """
         self.close()
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def _wrap_ftp(self, parsed: ParseResult, append: bool, backup: bool):
         """
@@ -563,7 +563,7 @@ class PolyWriter:
             self._fh = bz2.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         elif self.filename.endswith('.gz'):
             self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def _ssh_backup_if(self, sftp, path):
         """
@@ -597,7 +597,7 @@ class PolyWriter:
             sftp.rename(path, backup_filename)
         except FileNotFoundError:
             pass
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def _wrap_ssh(self, parsed: ParseResult, append: bool, backup: bool):  # noqa: C901
         """
@@ -640,7 +640,7 @@ class PolyWriter:
         elif self.filename.endswith('.gz'):
             self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         self._sftp = sftp
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def _wrap_local(self, append: bool, backup: bool):
         """
@@ -678,7 +678,7 @@ class PolyWriter:
             self._fh = gzip.open(self.filename, 'at' if append else 'wt')
         else:
             self._fh = open(self.filename, 'a' if append else 'w')
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def open(self, append: bool = False, backup: bool = True) -> 'PolyWriter':
         """
@@ -732,7 +732,7 @@ class PolyWriter:
         None
         """
         self._fh.write(data)
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     def close(self):
         """
@@ -750,10 +750,10 @@ class PolyWriter:
                 self._ftp.close()
             if self._sftp is not None:
                 self._sftp.close()
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
 
-    pass  # Ensure proper auto indentation
+    pass  # for auto-indentation
 
 
 def main():
@@ -794,7 +794,7 @@ def main():
             f"at {fmt.prate(rate)} ({fmt.pbyterate(bytes_count/seconds)}). "
             f"Total time: {fmt.psecs(seconds)})."
         )
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     # Set up argument parser for command-line interface
     parser = argparse.ArgumentParser(description='Test reading of plain text, gzipped, bzip2, or zstandard compressed files locally and remotely.')
@@ -817,7 +817,7 @@ def main():
     if args.write and not args.input_file:
         parser.error("--input-file/-i is required with --read")
         exit(1)
-        pass  # Ensure proper auto indentation
+        pass  # for auto-indentation
 
     # If read mode is specified
     if args.read:
@@ -830,12 +830,12 @@ def main():
                 for line in reader:
                     line_count += 1
                     bytes_count += len(line)
-                    pass  # Ensure proper auto indentation
+                    pass  # for auto-indentation
                 # Print final reading statistics
                 pinfo("FINISHED Reading.", reader.filename, line_count, bytes_count, time.monotonic() - t0, fmt)
-                pass  # Ensure proper auto indentation
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
+                pass  # for auto-indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
     else:
         # If write mode is specified
         print(f"Will Read from {args.input_file}")
@@ -850,14 +850,14 @@ def main():
                         line_count += 1
                         bytes_count += len(line)
                         writer.write(line)
-                        pass  # Ensure proper auto indentation
+                        pass  # for auto-indentation
                     # Print final writing statistics
                     pinfo("FINISHED Writing.", writer.filename, line_count, bytes_count, time.monotonic() - t0, fmt)
-                    pass  # Ensure proper auto indentation
-                pass  # Ensure proper auto indentation
-            pass  # Ensure proper auto indentation
-        pass  # Ensure proper auto indentation
-    pass  # Ensure proper auto indentation
+                    pass  # for auto-indentation
+                pass  # for auto-indentation
+            pass  # for auto-indentation
+        pass  # for auto-indentation
+    pass  # for auto-indentation
 
 
 if __name__ == "__main__":
