@@ -939,9 +939,9 @@ def main():
     # Parse the command-line arguments
     args = parser.parse_args()
 
-    # Validate that input-file is provided when in read mode
+    # Validate that input-file is provided when in write mode
     if args.write and not args.input_file:
-        parser.error("--input-file/-i is required with --read")
+        parser.error("--input-file/-i is required with --write")
         exit(1)
         pass  # for auto-indentation
 
