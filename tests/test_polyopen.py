@@ -42,7 +42,7 @@ def test_plain_text(temp_dir):
             
     assert read_data == data
 
-@pytest.mark.parametrize("ext", [".gz", ".bz2", ".zst"])
+@pytest.mark.parametrize("ext", [".gz", ".bz2", ".zst", ".xz"])
 def test_compressed_files(temp_dir, ext):
     data = ["line1 compressed", "line2 compressed", f"some data for {ext}"]
     filepath = os.path.join(temp_dir, f"test_data{ext}")
@@ -131,3 +131,17 @@ def test_polyopen_shorthand(temp_dir):
             
     assert read_appended == data + append_data
 
+from polyopen import UnsupportedArchiveError, ReadOnlyProtocolError
+
+def test_exception_guards(temp_dir):
+    # Test Archive Guard Write
+    with pytest.raises(UnsupportedArchiveError):
+        polyopen(os.path.join(temp_dir, "test.zip"), 'w')
+        
+    # Test Archive Guard Read
+    with pytest.raises(UnsupportedArchiveError):
+        polyopen(os.path.join(temp_dir, "test.tar.gz"), 'r')
+        
+    # Test Protocol Guard (HTTP write)
+    with pytest.raises(ReadOnlyProtocolError):
+        polyopen("http://example.com/data.txt", 'w')

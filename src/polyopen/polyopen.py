@@ -61,17 +61,25 @@ Version
 
 __version__ = "0.1.0"
 __author__ = "Gabriele Fariello"
+
+class PolyopenError(Exception):
+    """Base exception for polyopen."""
+
+class UnsupportedArchiveError(PolyopenError):
+    """Exception raised when an explicitly unsupported archive format is passed."""
+
+class ReadOnlyProtocolError(PolyopenError):
+    """Exception raised when attempting to write/append to a read-only stream."""
+
+UNSUPPORTED_ARCHIVES = ('.zip', '.tar', '.tgz', '.rar', '.7z', '.gz.tar', '.tar.gz', '.tar.bz2', '.tar.zst')
+
 import argparse
 import io
 import bz2
 import gzip
-import paramiko
-import zstandard as zstd
-import requests
+import lzma
 from urllib.parse import urlparse, ParseResult
-from tqdm import tqdm
 import ftplib
-import ftputil
 import os
 
 
@@ -267,6 +275,7 @@ class PolyReader:
         -------
         None
         """
+        import paramiko
         # Initialize an SSH client
         client = paramiko.SSHClient()
         # Load system host keys for the SSH client
@@ -289,6 +298,7 @@ class PolyReader:
 
         # Check the file extension to determine the appropriate decompression method
         if self.filename.endswith('.zst'):
+            import zstandard as zstd
             # Initialize a Zstandard decompressor with a maximum window size
             dctx = zstd.ZstdDecompressor(max_window_size=2**31)
             # Wrap the file handle with a text IO wrapper for decompressed stream reading
@@ -296,6 +306,8 @@ class PolyReader:
         elif self.filename.endswith('.bz2'):
             # Wrap the file handle with a BZ2 file object for decompression
             self._fh = bz2.BZ2File(self._fh)
+        elif self.filename.endswith('.xz'):
+            self._fh = lzma.open(self._fh, 'rt')
         elif self.filename.endswith('.gz'):
             # Wrap the file handle with a Gzip file object for decompression
             self._fh = gzip.GzipFile(fileobj=self._fh)
@@ -318,6 +330,7 @@ class PolyReader:
         -------
         None
         """
+        import requests
         # Make a GET request to the specified URL with streaming enabled
         response = requests.get(self.filename, stream=True)
 
@@ -326,6 +339,7 @@ class PolyReader:
 
         # Check the file extension to determine the appropriate decompression method
         if self.filename.endswith(".zst"):
+            import zstandard as zstd
             # Initialize a Zstandard decompressor with a maximum window size
             dctx = zstd.ZstdDecompressor(max_window_size=2**31)
             # Wrap the response content with a text IO wrapper for decompressed stream reading
@@ -333,6 +347,8 @@ class PolyReader:
         elif self.filename.endswith(".bz2"):
             # Wrap the response raw content with a BZ2 file object for decompression
             self._fh = bz2.open(response.raw, 'rt')
+        elif self.filename.endswith(".xz"):
+            self._fh = lzma.open(response.raw, 'rt')
         elif self.filename.endswith(".gz"):
             # Wrap the response raw content with a Gzip file object for decompression
             self._fh = gzip.open(response.raw, 'rt')
@@ -361,6 +377,7 @@ class PolyReader:
         """
         # Check the file extension to determine the appropriate decompression method
         if self.filename.endswith('.zst'):
+            import zstandard as zstd
             # Initialize a Zstandard decompressor with a maximum window size
             dctx = zstd.ZstdDecompressor(max_window_size=2**31)
             # Open the file in binary read mode and wrap it with a text IO wrapper for decompressed stream reading
@@ -369,6 +386,8 @@ class PolyReader:
         elif self.filename.endswith('.bz2'):
             # Open the BZ2 file in text read mode for decompression
             self._fh = bz2.open(self.filename, 'rt')
+        elif self.filename.endswith('.xz'):
+            self._fh = lzma.open(self.filename, 'rt')
         elif self.filename.endswith('.gz'):
             # Open the Gzip file in text read mode for decompression
             self._fh = gzip.open(self.filename, 'rt')
@@ -393,6 +412,9 @@ class PolyReader:
         if self._fh is not None:
             return self
 
+        if self.filename.lower().endswith(UNSUPPORTED_ARCHIVES):
+             raise UnsupportedArchiveError(f"polyopen does not support reading archive formats directly: {self.filename}. Use the standard library (e.g. zipfile) instead.")
+
         # Parse the URL to determine the file scheme (e.g., sftp, http, file)
         parsed = urlparse(self.filename)
 
@@ -409,6 +431,7 @@ class PolyReader:
 
         # If show_progress is enabled, initialize the progress bar
         if self.show_progress:
+            from tqdm import tqdm
             file_size = self._get_file_size()
             if file_size is not None:
                 self._progress = tqdm(total=file_size, unit='B', unit_scale=True)
@@ -553,6 +576,7 @@ class PolyWriter:
         -------
         None
         """
+        import ftputil
         self._ftp = ftputil.FTPHost(parsed.hostname, parsed.username, parsed.password, port=parsed.port,
                                     session_factory=FTPSessionWrapper)
         self.remote_filename = parsed.path
@@ -568,10 +592,13 @@ class PolyWriter:
         mode = 'ab' if append else 'wb'
         self._fh = self._ftp.open(parsed.path, mode)
         if parsed.path.endswith('.zst'):
+            import zstandard as zstd
             dctx = zstd.ZstdCompressor(level=22)
             self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
             self._fh = bz2.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
+        elif self.filename.endswith('.xz'):
+            self._fh = lzma.open(self._fh, preset=9, mode='at' if append else 'wt')
         elif self.filename.endswith('.gz'):
             self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         pass  # for auto-indentation
@@ -630,6 +657,7 @@ class PolyWriter:
         -------
         None
         """
+        import paramiko
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.connect(parsed.hostname, username=parsed.username, password=parsed.password)
@@ -644,10 +672,13 @@ class PolyWriter:
             print(f"ERROR: No such file found: {self.filename}")
             return exit(1), err
         if self.filename.endswith('.zst'):
+            import zstandard as zstd
             dctx = zstd.ZstdCompressor(level=22)
             self._fh = io.TextIOWrapper(dctx.stream_writer(self._fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
             self._fh = bz2.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
+        elif self.filename.endswith('.xz'):
+            self._fh = lzma.open(self._fh, preset=9, mode='at' if append else 'wt')
         elif self.filename.endswith('.gz'):
             self._fh = gzip.open(self._fh, compresslevel=9, mode='at' if append else 'wt')
         self._sftp = sftp
@@ -681,11 +712,14 @@ class PolyWriter:
 
         mode = 'ab' if append else 'wb'
         if self.filename.endswith('.zst'):
+            import zstandard as zstd
             cctx = zstd.ZstdCompressor()
             self._raw_fh = open(self.filename, mode)
             self._fh = io.TextIOWrapper(cctx.stream_writer(self._raw_fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
             self._fh = bz2.open(self.filename, 'at' if append else 'wt')
+        elif self.filename.endswith('.xz'):
+            self._fh = lzma.open(self.filename, 'at' if append else 'wt')
         elif self.filename.endswith('.gz'):
             self._fh = gzip.open(self.filename, 'at' if append else 'wt')
         else:
@@ -719,10 +753,16 @@ class PolyWriter:
         if self._fh is not None:
             return self
 
+        if self.filename.lower().endswith(UNSUPPORTED_ARCHIVES):
+             raise UnsupportedArchiveError(f"polyopen does not support writing or appending to archive formats safely: {self.filename}. Use the standard library (e.g. zipfile) to mutate archives.")
+
         if append and backup:
             raise ValueError("Cannot have both append and backup set to True.")
 
         parsed = urlparse(self.filename)
+
+        if parsed.scheme in ('http', 'https'):
+            raise ReadOnlyProtocolError(f"Protocol '{parsed.scheme}' does not support write/append operations in polyopen.")
 
         if parsed.scheme == 'ftp':
             self._wrap_ftp(parsed, append, backup)

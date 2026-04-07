@@ -8,6 +8,13 @@ __version__ = "0.1.0"
 __author__ = "Gabriele Fariello"
 __email__ = ""  # Leaving blank or user can fill in
 
-from .polyopen import polyopen, PolyReader, PolyWriter, FTPSessionWrapper
+from .polyopen import (
+    polyopen, PolyReader, PolyWriter, FTPSessionWrapper,
+    PolyopenError, UnsupportedArchiveError, ReadOnlyProtocolError
+)
 
-__all__ = ["polyopen", "PolyReader", "PolyWriter", "FTPSessionWrapper", "__version__", "__author__"]
+__all__ = [
+    "polyopen", "PolyReader", "PolyWriter", "FTPSessionWrapper", 
+    "PolyopenError", "UnsupportedArchiveError", "ReadOnlyProtocolError",
+    "__version__", "__author__"
+]
