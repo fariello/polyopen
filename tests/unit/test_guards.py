@@ -27,3 +27,8 @@ def test_append_backup_conflict(tmp_path):
     # Polyopen logic states you cannot append AND backup simultaneously
     with pytest.raises(ValueError):
         PolyWriter(str(tmp_path / "data.zst")).open(append=True, backup=True)
+
+def test_writer_progress_exception(tmp_path):
+    # Validates explicitly the newly structured parameter guard correctly fails.
+    with pytest.raises(NotImplementedError):
+        polyopen(str(tmp_path / "testing.zst"), 'w', show_progress=True)
