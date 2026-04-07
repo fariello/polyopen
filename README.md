@@ -23,45 +23,44 @@ pip install polyopen
 
 ## Quick Start
 
-### Reading Files
+The easiest way to use the library is with the unifed `polyopen()` wrapper, which automatically routes to a `PolyReader` or `PolyWriter` and acts exactly like Python's built-in `open()`. 
 
-To read from a local gzipped file:
+You can use it universally for both standard I/O and remote/compressed files!
+
+### Basic Usage
+
 ```python
-from polyopen import PolyReader
+from polyopen import polyopen
 
-with PolyReader("path/to/localfile.gz") as reader:
-    for line in reader:
-        print(line)
+# 1. Writing to a local compressed file
+with polyopen("output.bz2", 'w') as f:
+    f.write("Hello, World!\n")
+
+# 2. Appending without producing backup files
+with polyopen("output.bz2", 'a') as f:
+    f.write("Appended line.\n")
+
+# 3. Reading it back efficiently
+with polyopen("output.bz2", 'r') as f:
+    for line in f:
+        print(line.strip())
 ```
 
-To read from a remote HTTP source:
+### Advanced Networking
+
+Pass network protocols seamlessly without changing syntax. (`polyopen` will natively `.gz`, `.bz2`, and `.zst` wrap via the file extension)
+
 ```python
-with PolyReader("http://example.com/data.txt") as reader:
-    for line in reader:
-        # process(line)
-```
+from polyopen import polyopen
 
-To read from a remote SSH server with zstd compression:
-```python
-with PolyReader("ssh://username:password@hostname/path/to/remote.zst") as reader:
-    for line in reader:
-        # process(line)
-```
+# Write directly to a remote SSH/sftp box (auto-maintains .bu backups on overwrite!)
+with polyopen("sftp://username:password@hostname/data.csv.zst", 'w', backup=True) as f:
+    f.write("id,name\n1,john\n")
 
-### Writing Files
-
-To write to a local bz2 compressed file:
-```python
-from polyopen import PolyWriter
-
-with PolyWriter("path/to/outputfile.bz2") as writer:
-    writer.write("Some data to write\n")
-```
-
-To write to a remote SFTP server:
-```python
-with PolyWriter("sftp://username:password@hostname/path/to/outputfile.txt") as writer:
-    writer.write("Remote data writing works identically.\n")
+# Read a remote HTTP Stream
+with polyopen("http://example.com/data.txt.gz", 'r') as f:
+    for line in f:
+        print(line.strip())
 ```
 
 ## Built-in Test CLI

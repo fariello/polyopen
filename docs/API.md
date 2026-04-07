@@ -1,6 +1,21 @@
 # Polyopen API Reference
 
-The `polyopen` module exposes robust context managers for handling transparent multi-format, multi-protocol file streams.
+The `polyopen` module exposes robust context managers and convenience wrappers for handling transparent multi-format, multi-protocol file streams.
+
+---
+
+## `def polyopen(filename: str, mode: str = 'r', backup: bool = True, show_progress: bool = False)`
+
+This is the recommended unified entrypoint for `polyopen`. It mimics Python's standard `open()` function but transparently incorporates compression and network capabilities by automatically instantiating a `PolyReader` or `PolyWriter`.
+
+**Parameters:**
+- `filename`: A literal file path or complete URI (`http://`, `ssh://`, `sftp://`, `ftp://`).
+- `mode`: `'r'` for reading, `'w'` for writing, `'a'` for appending (supports variants like `'rb'`, `'wt'`, etc.).
+- `backup`: `bool` (default `True`). Natively backups the existing file using a `.bu` extension instead of clobbering it if writing locally or over FTP/SSH.
+- `show_progress`: `bool` (default `False`). If reading, attempts to output a `tqdm` progress bar to shell.
+
+**Returns:**
+An opened `PolyReader` or `PolyWriter` context manager instance ready for parsing.
 
 ---
 

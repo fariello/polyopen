@@ -165,6 +165,7 @@ class PolyReader:
         self._progress = None
         self._request_iterator = False
         self._http_file_size = None
+        self._raw_fh = None
 
     def __enter__(self) -> 'PolyReader':
         """
@@ -360,7 +361,8 @@ class PolyReader:
             # Initialize a Zstandard decompressor with a maximum window size
             dctx = zstd.ZstdDecompressor(max_window_size=2**31)
             # Open the file in binary read mode and wrap it with a text IO wrapper for decompressed stream reading
-            self._fh = io.TextIOWrapper(dctx.stream_reader(open(self.filename, 'rb')), encoding='utf-8')
+            self._raw_fh = open(self.filename, 'rb')
+            self._fh = io.TextIOWrapper(dctx.stream_reader(self._raw_fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
             # Open the BZ2 file in text read mode for decompression
             self._fh = bz2.open(self.filename, 'rt')
@@ -385,6 +387,9 @@ class PolyReader:
         PolyReader
             The PolyReader instance with the file opened for reading.
         """
+        if self._fh is not None:
+            return self
+
         # Parse the URL to determine the file scheme (e.g., sftp, http, file)
         parsed = urlparse(self.filename)
 
@@ -441,6 +446,8 @@ class PolyReader:
         """
         if self._fh is not None:
             self._fh.close()
+        if self._raw_fh is not None:
+            self._raw_fh.close()
         if self._sftp is not None:
             self._sftp.close()
         if self._progress is not None:
@@ -482,6 +489,7 @@ class PolyWriter:
         """
         self.filename = filename
         self._fh = None
+        self._raw_fh = None
         self._ftp = None
         self._sftp = None
         pass  # for auto-indentation
@@ -671,7 +679,8 @@ class PolyWriter:
         mode = 'ab' if append else 'wb'
         if self.filename.endswith('.zst'):
             cctx = zstd.ZstdCompressor()
-            self._fh = io.TextIOWrapper(cctx.stream_writer(open(self.filename, mode)), encoding='utf-8')
+            self._raw_fh = open(self.filename, mode)
+            self._fh = io.TextIOWrapper(cctx.stream_writer(self._raw_fh), encoding='utf-8')
         elif self.filename.endswith('.bz2'):
             self._fh = bz2.open(self.filename, 'at' if append else 'wt')
         elif self.filename.endswith('.gz'):
@@ -704,6 +713,9 @@ class PolyWriter:
         ValueError
             If both append and backup are True.
         """
+        if self._fh is not None:
+            return self
+
         if append and backup:
             raise ValueError("Cannot have both append and backup set to True.")
 
@@ -746,14 +758,50 @@ class PolyWriter:
         """
         if self._fh is not None:
             self._fh.close()
+            if hasattr(self, '_raw_fh') and self._raw_fh is not None:
+                self._raw_fh.close()
             if self._ftp is not None:
                 self._ftp.close()
             if self._sftp is not None:
                 self._sftp.close()
             pass  # for auto-indentation
         pass  # for auto-indentation
-
     pass  # for auto-indentation
+
+def polyopen(filename: str, mode: str = 'r', backup: bool = True, show_progress: bool = False):
+    """
+    Open a file for reading or writing, determining the appropriate stream and compression 
+    automatically based on the file extension and protocol scheme.
+
+    This function mimics Python's built-in `open()`, returning a `PolyReader` or `PolyWriter`
+    context manager.
+    
+    Parameters
+    ----------
+    filename : str
+        The path or URL to open.
+    mode : str, optional
+        The mode in which the file is opened. 'r' for reading (default), 'w' for writing, 
+        and 'a' for appending.
+    backup : bool, optional
+        If True, creates a backup of the existing file before overwriting (write/append modes).
+        Cannot be True when appending. Default is True.
+    show_progress : bool, optional
+        If True, displays a progress bar (read mode only). Default is False.
+        
+    Returns
+    -------
+    PolyReader or PolyWriter
+        The appropriate reader or writer context manager object.
+    """
+    if mode in ('r', 'rt', 'rb'):
+        return PolyReader(filename, show_progress=show_progress).open()
+    elif mode in ('w', 'wt', 'wb'):
+        return PolyWriter(filename).open(append=False, backup=backup)
+    elif mode in ('a', 'at', 'ab'):
+        return PolyWriter(filename).open(append=True, backup=False)
+    else:
+        raise ValueError(f"Unsupported mode: '{mode}'. Supported modes are 'r', 'w', 'a'.")
 
 
 def main():

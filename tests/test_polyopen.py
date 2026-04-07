@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import pytest
 
-from polyopen import PolyReader, PolyWriter
+from polyopen import PolyReader, PolyWriter, polyopen
 
 @pytest.fixture
 def temp_dir():
@@ -98,3 +98,36 @@ def test_append_and_backup(temp_dir):
 
     expected_combined = data_overwrite + data_append
     assert read_raw_file(filepath) == expected_combined
+
+def test_polyopen_shorthand(temp_dir):
+    filepath = os.path.join(temp_dir, "shorthand_test.zst")
+    data = ["polyopen", "shorthand", "rocks"]
+    
+    # Test writing
+    with polyopen(filepath, 'w') as writer:
+        for line in data:
+            writer.write(line + '\n')
+            
+    assert os.path.exists(filepath)
+    
+    # Test reading
+    read_data = []
+    with polyopen(filepath, 'r') as reader:
+        for line in reader:
+            read_data.append(line.rstrip('\n'))
+            
+    assert read_data == data
+
+    # Test appending
+    append_data = ["another", "line"]
+    with polyopen(filepath, 'a') as writer:
+        for line in append_data:
+            writer.write(line + '\n')
+            
+    read_appended = []
+    with polyopen(filepath, 'r') as reader:
+        for line in reader:
+            read_appended.append(line.rstrip('\n'))
+            
+    assert read_appended == data + append_data
+
