@@ -131,7 +131,7 @@ def test_polyopen_shorthand(temp_dir):
             
     assert read_appended == data + append_data
 
-from polyopen import UnsupportedArchiveError, ReadOnlyProtocolError
+from polyopen import UnsupportedArchiveError, ReadOnlyProtocolError, UnsupportedProtocolError
 
 def test_exception_guards(temp_dir):
     # Test Archive Guard Write
@@ -145,3 +145,8 @@ def test_exception_guards(temp_dir):
     # Test Protocol Guard (HTTP write)
     with pytest.raises(ReadOnlyProtocolError):
         polyopen("http://example.com/data.txt", 'w')
+
+    # Test Unsupported Cloud Protocols
+    with pytest.raises(UnsupportedProtocolError) as excinfo:
+        polyopen("s3://bucket/data.csv", 'r')
+    assert "smart_open" in str(excinfo.value)

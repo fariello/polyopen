@@ -10,11 +10,11 @@ __email__ = ""  # Leaving blank or user can fill in
 
 from .polyopen import (
     polyopen, PolyReader, PolyWriter, FTPSessionWrapper,
-    PolyopenError, UnsupportedArchiveError, ReadOnlyProtocolError
+    PolyopenError, UnsupportedArchiveError, ReadOnlyProtocolError, UnsupportedProtocolError
 )
 
 __all__ = [
     "polyopen", "PolyReader", "PolyWriter", "FTPSessionWrapper", 
-    "PolyopenError", "UnsupportedArchiveError", "ReadOnlyProtocolError",
+    "PolyopenError", "UnsupportedArchiveError", "ReadOnlyProtocolError", "UnsupportedProtocolError",
     "__version__", "__author__"
 ]

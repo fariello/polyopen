@@ -4,6 +4,15 @@ A Python module for versatile file handling, providing unified stream-level acce
 
 Extracted and refined from the monolithic `pylib` workspace, `polyopen` is designed to stand alone as an easy-to-use utility library for fetching and writing data across a variety of protocols and formats.
 
+## Background & Philosophy
+
+`polyopen` was originally developed circa 2007 alongside a larger private monolithic repository. At the time, no intuitive unified solution existed in the Python ecosystem to seamlessly juggle disparate compression formats and remote stream protocols behind a single standard API. It has been battle-tested (famous last words) and refined for personal usage for over a decade before being fully extracted into this dedicated, standalone package.
+
+**Why not just use `smart_open`?**
+While the fantastic `smart_open` library eventually emerged to solve a similar problem space, `polyopen` is maintained to provide a distinct, highly-focused alternative:
+- **Lightweight Architecture:** `smart_open` is inherently wired for massive cloud data lakes, utilizing heavy overarching SDKs (`boto3`, GCS, etc.) to manage complex object chunking. `polyopen` strictly eschews massive cloud architectures in favor of blistering-fast import times, strictly lazy-loaded dependencies, and base-level infrastructure (Linux protocols, HTTP, FTP).
+- **Inherent Resiliency:** `polyopen` uniquely features automatic backup rotation. When explicitly overwriting destination datasets locally or over SSH/FTP, `polyopen` seamlessly rolls sequential `.bu` backwards backups without forcing you to write complex filesystem manipulation logic.
+
 ## Features
 
 - **Transparent Compression**: Seamlessly reads and writes `.gz`, `.bz2`, `.xz`, and `.zst` files on the fly.

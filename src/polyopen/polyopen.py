@@ -71,6 +71,9 @@ class UnsupportedArchiveError(PolyopenError):
 class ReadOnlyProtocolError(PolyopenError):
     """Exception raised when attempting to write/append to a read-only stream."""
 
+class UnsupportedProtocolError(PolyopenError):
+    """Exception raised when an explicitly unsupported protocol is invoked."""
+
 UNSUPPORTED_ARCHIVES = ('.zip', '.tar', '.tgz', '.rar', '.7z', '.gz.tar', '.tar.gz', '.tar.bz2', '.tar.zst')
 
 import argparse
@@ -429,6 +432,12 @@ class PolyReader:
         # Handle HTTP and HTTPS URLs
         elif parsed.scheme in ('http', 'https'):
             self._wrap_http()
+        # Explicit Cloud Rejection
+        elif parsed.scheme in ('s3', 'gs', 'az', 'hdfs'):
+            raise UnsupportedProtocolError(
+                f"polyopen does not support cloud object stores like '{parsed.scheme}://'. "
+                f"We heavily recommend using the 'smart_open' library or dedicated SDKs (like boto3) for this architecture."
+            )
         # Handle local files
         else:
             self._wrap_local()
@@ -773,6 +782,12 @@ class PolyWriter:
 
         if parsed.scheme in ('http', 'https'):
             raise ReadOnlyProtocolError(f"Protocol '{parsed.scheme}' does not support write/append operations in polyopen.")
+            
+        if parsed.scheme in ('s3', 'gs', 'az', 'hdfs'):
+            raise UnsupportedProtocolError(
+                f"polyopen does not support explicitly pushing to cloud object stores like '{parsed.scheme}://'. "
+                f"We heavily recommend using the 'smart_open' library or dedicated SDKs (like boto3) for unified cloud I/O."
+            )
 
         if parsed.scheme == 'ftp':
             self._wrap_ftp(parsed, append, backup)
