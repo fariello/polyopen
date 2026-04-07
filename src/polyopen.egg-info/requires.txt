@@ -1,5 +1,0 @@
-paramiko
-zstandard
-requests
-tqdm
-ftputil
