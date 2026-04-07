@@ -417,6 +417,11 @@ class PolyReader:
 
         # Parse the URL to determine the file scheme (e.g., sftp, http, file)
         parsed = urlparse(self.filename)
+        
+        if parsed.scheme == 'file':
+            from urllib.request import url2pathname
+            self.filename = url2pathname(parsed.path)
+            parsed = urlparse(self.filename)
 
         # Handle SFTP and SSH URLs
         if parsed.scheme in ('sftp', 'ssh'):
@@ -760,6 +765,11 @@ class PolyWriter:
             raise ValueError("Cannot have both append and backup set to True.")
 
         parsed = urlparse(self.filename)
+        
+        if parsed.scheme == 'file':
+            from urllib.request import url2pathname
+            self.filename = url2pathname(parsed.path)
+            parsed = urlparse(self.filename)
 
         if parsed.scheme in ('http', 'https'):
             raise ReadOnlyProtocolError(f"Protocol '{parsed.scheme}' does not support write/append operations in polyopen.")

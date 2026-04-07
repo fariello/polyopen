@@ -51,7 +51,7 @@ with polyopen("output.bz2", 'r') as f:
 Because `polyopen` is designed absolutely for stream-based parsing, it supports appending natively to compatible stream formats, but actively restricts container archives to prevent unintentional corruption.
 
 ### 🟢 Supported Stream Formats
-| Format / Protocol | Read? | Write? | Append? (`'a'`) | Notes |
+| Format / Protocol | Read? | Write? | Append? | Notes |
 | :--- | :---: | :---: | :---: | :--- |
 | Plain Text (`.txt`, `.csv`, etc.) | ✅ | ✅ | ✅ | StandardUTF-8 streams |
 | Zstandard (`.zst`) | ✅ | ✅ | ✅ | Extremely fast, supports concatenated frames |
