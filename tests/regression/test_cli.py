@@ -39,7 +39,7 @@ def test_cli_write_execution(tmp_path):
 
     target = str(tmp_path / "write_mock.txt")
     
-    cmd = [sys.executable, "-m", "polyopen.polyopen", "--write", "--input-file", source, target]
+    cmd = [sys.executable, "-m", "polyopen.polyopen", "--write", source, target]
     result = subprocess.run(cmd, text=True, capture_output=True)
     
     assert result.returncode == 0

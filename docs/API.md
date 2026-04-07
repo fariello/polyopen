@@ -1,90 +1,51 @@
-# Polyopen API Reference
+# Public API Reference: `polyopen`
 
-The `polyopen` module exposes robust context managers and convenience wrappers for handling transparent multi-format, multi-protocol file streams.
+*[Return to Main README](../README.md)*
 
----
+This document serves as the formal specification for developers programmatically integrating `polyopen` into Python workspaces. 
 
-## `def polyopen(filename: str, mode: str = 'r', backup: bool = True, show_progress: bool = False)`
+## The Core Wrapper
 
-This is the recommended unified entrypoint for `polyopen`. It mimics Python's standard `open()` function but transparently incorporates compression and network capabilities by automatically instantiating a `PolyReader` or `PolyWriter`.
+### `polyopen(filename: str, mode: str = 'r', backup: bool = True, show_progress: bool = False)`
+This function is intended to be a 1-to-1 drop-in replacement for the native Python `builtins.open()` context manager. It completely obfuscates the intricacies of remote protocol connectivity, auto-routing execution pathways locally underneath.
 
-**Parameters:**
-- `filename`: A literal file path or complete URI (`http://`, `ssh://`, `sftp://`, `ftp://`).
-- `mode`: `'r'` for reading, `'w'` for writing, `'a'` for appending (supports variants like `'rb'`, `'wt'`, etc.).
-- `backup`: `bool` (default `True`). Natively backups the existing file using a `.bu` extension instead of clobbering it if writing locally or over FTP/SSH.
-- `show_progress`: `bool` (default `False`). If reading, attempts to output a `tqdm` progress bar to shell.
+#### Parameters
+- **`filename`** (`str`): The target path or URL. (e.g. `tests/data.txt`, `https://example.com/log.zst`, or `ssh://user@host/syslog`).
+- **`mode`** (`str`): Target IO operation format sequence:
+  - Reading operations (`'r'`, `'rt'`, `'rb'`) trigger `PolyReader`.
+  - Writing / Truncating (`'w'`, `'wt'`, `'wb'`) trigger `PolyWriter(append=False)`.
+  - Appending operations (`'a'`, `'at'`, `'ab'`) trigger `PolyWriter(append=True)`.
+- **`backup`** (`bool`): Determines whether `polyopen` creates rolling numeric backups (`file.001.bu`) naturally before overwriting existing destinations locally or across SSH/FTP topologies. Default is `True`. 
+  - *Guard Rails:* Triggers a `ValueError` if used alongside `'a'` Mode constraints natively, since Appending inherently avoids structural replacement.
+- **`show_progress`** (`bool`): Enables a console `tqdm` IO progress bar reporting binary line ingestion progress. 
+  - *Guard Rails:* This flag only governs iteration over `PolyReader`. Providing `show_progress=True` dynamically atop a `PolyWriter` execution inherently triggers a `NotImplementedError` directly natively avoiding deceptive execution gaps sequentially.
 
-**Returns:**
-An opened `PolyReader` or `PolyWriter` context manager instance ready for parsing.
+#### Exceptions
+To structurally isolate pipeline operations, `polyopen` leverages a custom native exception tree tracking boundary violations inherently. All exceptions inherit from a base `PolyopenError` package class.
 
----
-
-## `class PolyReader`
-
-A class used to read files line by line, with native support for `gzip`, `bz2`, and `zst` compression formats, as well as remote files via `HTTP`, `HTTPS`, `FTP`, `SSH`, and `SFTP`.
-
-### `__init__(self, filename: str, show_progress: bool = False)`
-
-Initialize `PolyReader` with a specific filename structure. 
-
-**Parameters:**
-- `filename`: A literal file path or a complete URI denoting the location and protocol of the file. Supported schemes:
-  - Local filesystem (`path/to/file.ext`)
-  - HTTP / HTTPS (`http://domain.com/path/...`)
-  - SSH / SFTP (`ssh://user:pass@host/path/...`, `sftp://user:pass@host/path/...`)
-- `show_progress`: `bool`, optional. If `True`, a console progress bar utilizes `tqdm` based on the file stream's underlying length (when computable).
-
-### Methods
-
-#### `open(self) -> 'PolyReader'`
-Manually trigger the open and parsing logic. 
-*Note: Generally you should prefer using `PolyReader` as a context manager `with PolyReader(...) as reader:` which implicitly evaluates this method.*
-
-#### `close(self)`
-Safely flush buffers and shut down networking session hooks.
-
-#### Yields (`__iter__`)
-A stream of decompressed, UTF-8 encoded text lines.
-```python
-with PolyReader("myfile.txt.gz") as reader:
-    for line in reader:
-        print(line)
-```
+`UnsupportedArchiveError`: Triggered preemptively when an invocation dynamically catches trailing Posix archival indicators exclusively blocking operations across (`.zip`, `.tar`, `.tgz`, `.7z`, or `.rar` paths).
+`ReadOnlyProtocolError`: Actively denies logical Appending/Write stream permutations initiated against natively stateless retrieval environments strictly (e.g., triggering `polyopen("https://...", 'w')`).
+`UnsupportedProtocolError`: Caught intentionally whenever `urllib.parse` queries detect an enterprise object-storage protocol map request string (`s3://`, `gs://`, `az://`). Prevents blind authentication failures while structurally directing users toward heavier alternative Python library SDKs mapping explicitly to those platforms (like `smart_open` or native `boto3`).
 
 ---
 
-## `class PolyWriter`
+## Direct Handler Abstractions
 
-A class used to safely write line-by-line buffers directly to transparent compressions (`gzip`, `bz2`, `zst`) and routing to remote architectures (`FTP`, `SSH`, `SFTP`, Local).
+Advanced users bypassing the unified `polyopen(...)` entry wrapper may interact iteratively directly with the backend object components handling the connection semantics dynamically below.
 
-### `__init__(self, filename: str)`
+### `class PolyReader`
+Invoked autonomously internally mapped for file ingestion paths dynamically.
 
-Initialize `PolyWriter` with a specific target filename.
+#### Methods
+- **`__init__(self, filename: str, show_progress: bool = False)`**: Assesses URL handlers internally mapped to sequence connections natively.
+- **`open(self) -> 'PolyReader'`**: Establishes active network session constraints. Explicitly tracks file size limits across valid endpoints (`_http_file_size` internal metadata block natively established via `requests.get()` headers). 
+- **`close(self) -> None`**: Flushes stream operations closing remote SFTP objects gracefully alongside the localized native internal `io.TextIOWrapper` dependencies cleanly.
+- **`__next__(self) -> str`**: Lazily pulls chunk iterations utilizing `self._fh.readline()`, automatically handling continuous chunk slicing boundaries locally and appending fragments seamlessly via CPython standard buffering constraints inherently!
 
-**Parameters:**
-- `filename`: Target output file path. The stream respects the `.gz`, `.bz2`, or `.zst` termination by wrapping standard python text-streams through their relevant dictionary compression. Supported network destinations:
-  - Local files (`out.gz`)
-  - FTP (`ftp://user:pass@host/path/...`)
-  - SSH / SFTP (`ssh://user:pass@host/path/...`)
+### `class PolyWriter`
+Explicitly tracks outbound stream algorithms natively determining optimal output frames mathematically.
 
-### Methods
-
-#### `open(self, append: bool = False, backup: bool = True) -> 'PolyWriter'`
-Manually opens the file allocation, providing safety bindings for appending data or copying backup revisions. To utilize these flags with a context manager, you must manually initialize `open()`.
-
-**Parameters:**
-- `append`: `bool` (default `False`). Open in text-append translation mode (`"at"`/`"ab"`).
-- `backup`: `bool` (default `True`). If a file already exists at the requested path, polywriter renames the previous representation to `.001.bu`.
-- *Throws ValueError if both `append` and `backup` are `True`.*
-
-#### `write(self, data: str)`
-Emit data sequentially to the stream context.
-
-#### `close(self)`
-Commit file handles safely.
-
----
-
-## `class FTPSessionWrapper`
-*Internal Use Context Provider*
-A direct interface adapter wrapping `ftplib.FTP`, supporting FTP connections against non-standard runtime ports to service `PolyWriter` and `PolyReader` network abstractions.
+#### Methods
+- **`__init__(self, filename: str, show_progress: bool = False)`**: Natively identical.
+- **`open(self, append: bool = False, backup: bool = True) -> 'PolyWriter'`**: Dynamically evaluates the structural network routing, natively invoking explicit `try/catch` `.stat()` lookup sequences dynamically triggering robust `.bu` backwards archival generation iteratively over remote environments cleanly.
+- **`write(self, data: str) -> None`**: Securely casts textual IO frames sequentially passing payloads statically to the isolated algorithmic dictionary chunking structures effectively (`zstd.ZstdCompressor.stream_writer`, `bz2.BZ2File`, etc).

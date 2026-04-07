@@ -59,28 +59,28 @@ with polyopen("output.bz2", 'r') as f:
 
 Because `polyopen` is designed absolutely for stream-based parsing, it supports appending natively to compatible stream formats, but actively restricts container archives to prevent unintentional corruption.
 
-### 🟢 Supported Stream Formats
+### Supported Stream Formats
 | Format / Protocol | Read? | Write? | Append? | Notes |
 | :--- | :---: | :---: | :---: | :--- |
-| Plain Text (`.txt`, `.csv`, etc.) | ✅ | ✅ | ✅ | StandardUTF-8 streams |
-| Zstandard (`.zst`) | ✅ | ✅ | ✅ | Extremely fast, supports concatenated frames |
-| GZIP (`.gz`) | ✅ | ✅ | ✅ | Standard Python `gzip` bindings |
-| BZIP2 (`.bz2`) | ✅ | ✅ | ✅ | Standard Python `bz2` bindings |
-| LZMA (`.xz`) | ✅ | ✅ | ✅ | Standard Python `lzma` bindings |
-| Local File (`file://` or implicit) | ✅ | ✅ | ✅ | Standard local OS operations, handles backup `.bu` rotation |
-| SSH / SFTP (`ssh://`, `sftp://`) | ✅ | ✅ | ✅ | Fully authenticated remote transfer, supports backups |
-| FTP (`ftp://`) | ✅ | ✅ | ✅ | Standard FTP transfer, supports backups |
-| HTTP / HTTPS (`http://`, `https://`) | ✅ | ❌ | ❌ | Protected stream-fetching only, throws `ReadOnlyProtocolError` on write |
+| Plain Text (`.txt`, `.csv`, etc.) | Yes | Yes | Yes | StandardUTF-8 streams |
+| Zstandard (`.zst`) | Yes | Yes | Yes | Extremely fast, supports concatenated frames |
+| GZIP (`.gz`) | Yes | Yes | Yes | Standard Python `gzip` bindings |
+| BZIP2 (`.bz2`) | Yes | Yes | Yes | Standard Python `bz2` bindings |
+| LZMA (`.xz`) | Yes | Yes | Yes | Standard Python `lzma` bindings |
+| Local File (`file://` or implicit) | Yes | Yes | Yes | Standard local OS operations, handles backup `.bu` rotation |
+| SSH / SFTP (`ssh://`, `sftp://`) | Yes | Yes | Yes | Fully authenticated remote transfer, supports backups |
+| FTP (`ftp://`) | Yes | Yes | Yes | Standard FTP transfer, supports backups |
+| HTTP / HTTPS (`http://`, `https://`) | Yes | No | No | Protected stream-fetching only, throws `ReadOnlyProtocolError` on write |
 
-### 🔴 Unsupported Archive Formats
+### Unsupported Archive Formats
 These formats are **Archival Containers** (miniature file systems), not uniform text streams. If passed to `polyopen`, they will instantly raise an `UnsupportedArchiveError` to protect you from inadvertently corrupting them.
 
 | Container Extension | Supported? | Reason | Alternative |
 | --- | :---: | --- | --- |
-| `.zip` | ❌ | Writing streams overwrites the Central Directory index map, corrupting the file. | Use Python's built-in `zipfile` |
-| `.tar` | ❌ | Contains POSIX file headers and multiple internal hierarchy layers. | Use Python's built-in `tarfile` |
-| `.rar`, `.7z` | ❌ | Binary filesystem maps rather than single-file text compression streams. | Use 3rd party archive managers |
-| `.tar.gz`, `.tgz` | ❌ | Sits underneath a `.tar` extraction layer. | Use Python's built-in `tarfile` |
+| `.zip` | No | Writing streams overwrites the Central Directory index map, corrupting the file. | Use Python's built-in `zipfile` |
+| `.tar` | No | Contains POSIX file headers and multiple internal hierarchy layers. | Use Python's built-in `tarfile` |
+| `.rar`, `.7z` | No | Binary filesystem maps rather than single-file text compression streams. | Use 3rd party archive managers |
+| `.tar.gz`, `.tgz` | No | Sits underneath a `.tar` extraction layer. | Use Python's built-in `tarfile` |
 
 ### Advanced Networking
 
@@ -106,7 +106,7 @@ You can test reading and writing directly without a Python script:
 # Read a compressed file and show progress
 python -m polyopen.polyopen --read path/to/large.zst
 
-# Copy data across boundaries
+# Copy data across boundaries natively (Source -> Destination)
 python -m polyopen.polyopen --write http://source.com/data.csv.gz sftp://user:pass@host/dest.csv.zst
 ```
 
@@ -119,3 +119,18 @@ cd polyopen
 pip install -e .[dev] pytest
 python -m pytest tests/
 ```
+
+## Full Documentation & Architecture
+
+For deep-dives into the precise mechanical routing topologies, algorithm boundary mappings, or exact programmatic SDK constraints, consult the formal internal documentation map:
+- [Public API Specs](docs/API.md): Parameter lists, native Exception hierarchy behavior, `PolyReader` semantics natively.
+- [CLI Behaviors](docs/CLI.md): Exact bash evaluations tracking positional broadcast parameters internally natively.
+- [Architecture Overview](ARCHITECTURE.md): Structural evaluations analyzing native `io.TextIOWrapper` chunk interception safely verifying Mock CI endpoints identically.
+- [Functional Specification](FUNCTIONAL_SPEC.md): Formal pre-release technical constraints capturing all system operational scope comprehensively.
+
+## Acknowledgements and Limitations
+
+While the module is heavily structurally covered, developers should accurately understand exact integration constraints natively:
+- **Cloud Immutability Exclusions**: Due strictly to architectural constraints barring internal S3 file appending recursively natively, execution flows evaluating exact enterprise object strings natively (`s3://`, `gs://`, `az://`) are securely blocked. Use `smart_open` appropriately to manipulate those objects dynamically.
+- **Write Tracking Limitation (v0.1.0)**: Executing specific parameter flags injecting `show_progress=True` executes flawlessly across `PolyReader` streaming iterations, but is inherently disabled iteratively executing across `PolyWriter` pipelines natively.
+- **Infinite Blocking Risk**: Executing backup checks against SFTP topologies actively sequentially evaluates `stat(file.XXX.bu)` numbers manually. Remote nodes structurally hosting thousands of sequential `.bu` files natively will incur mathematically linear blocking overhead dynamically polling arrays gracefully before generating sequential bounds fundamentally.

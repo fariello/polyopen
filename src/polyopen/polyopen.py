@@ -642,6 +642,10 @@ class PolyWriter:
             while True:
                 try:
                     sftp.stat(backup_filename)
+                    if num >= 999:
+                        import time
+                        backup_filename = f"{path}.{int(time.time())}.bu"
+                        break
                     num += 1
                     backup_filename = f"{path}.{num:03d}.bu"
                 except FileNotFoundError:
@@ -720,6 +724,10 @@ class PolyWriter:
             num = 1
             backup_filename = f"{self.filename}.{num:03d}.bu"
             while os.path.exists(backup_filename):
+                if num >= 999:
+                    import time
+                    backup_filename = f"{self.filename}.{int(time.time())}.bu"
+                    break
                 num += 1
                 backup_filename = f"{self.filename}.{num:03d}.bu"
             os.rename(self.filename, backup_filename)
@@ -862,6 +870,8 @@ def polyopen(filename: str, mode: str = 'r', backup: bool = True, show_progress:
     PolyReader or PolyWriter
         The appropriate reader or writer context manager object.
     """
+    if show_progress and mode in ('w', 'wt', 'wb', 'a', 'at', 'ab'):
+        raise NotImplementedError('Progress tracking is currently isolated to reader paths. Write implementations are deferred.')
     if mode in ('r', 'rt', 'rb'):
         return PolyReader(filename, show_progress=show_progress).open()
     elif mode in ('w', 'wt', 'wb'):
@@ -933,17 +943,8 @@ def main():
     group.add_argument('--write', '-w', action='store_true', help='Write mode')
     group.add_argument('--read', '-r', action='store_true', help='Read mode')
 
-    # Add argument for specifying input file when in read mode
-    parser.add_argument('--input-file', '-i', type=str, help='File to read when testing read mode.')
-
     # Parse the command-line arguments
     args = parser.parse_args()
-
-    # Validate that input-file is provided when in write mode
-    if args.write and not args.input_file:
-        parser.error("--input-file/-i is required with --write")
-        exit(1)
-        pass  # for auto-indentation
 
     # If read mode is specified
     if args.read:
@@ -964,9 +965,17 @@ def main():
         pass  # for auto-indentation
     else:
         # If write mode is specified
-        print(f"Will Read from {args.input_file}")
-        for output_file in args.files:
-            with PolyReader(args.input_file) as reader:
+        if len(args.files) < 2:
+            parser.error("Write mode requires at least one source file and one destination file (e.g., 'python -m polyopen.polyopen -w src dest')")
+            exit(1)
+            pass # for auto-indentation
+            
+        source_file = args.files[0]
+        output_files = args.files[1:]
+        
+        print(f"Will Read from {source_file}")
+        for output_file in output_files:
+            with PolyReader(source_file) as reader:
                 with PolyWriter(output_file) as writer:
                     print(f"Writing {writer.filename}")
                     line_count = 0
