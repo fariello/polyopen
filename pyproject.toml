@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polyopen"
+version = "1.0.0"
+description = "A Python module for versatile file handling (compression formats and basic remote sources)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "Gabriele Fariello" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "paramiko",
+    "zstandard",
+    "requests",
+    "tqdm",
+    "ftputil"
+]
+
+[project.urls]
+Homepage = "https://github.com/fariello/polyopen"

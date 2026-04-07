@@ -1,0 +1,9 @@
+pyproject.toml
+src/polyopen/__init__.py
+src/polyopen/polyopen.py
+src/polyopen.egg-info/PKG-INFO
+src/polyopen.egg-info/SOURCES.txt
+src/polyopen.egg-info/dependency_links.txt
+src/polyopen.egg-info/requires.txt
+src/polyopen.egg-info/top_level.txt
+tests/test_polyopen.py

@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: polyopen
+Version: 1.0.0
+Summary: A Python module for versatile file handling (compression formats and basic remote sources).
+Author: Gabriele Fariello
+License: MIT
+Project-URL: Homepage, https://github.com/fariello/polyopen
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: paramiko
+Requires-Dist: zstandard
+Requires-Dist: requests
+Requires-Dist: tqdm
+Requires-Dist: ftputil

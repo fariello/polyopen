@@ -764,11 +764,22 @@ def main():
     It supports various compression formats (plain text, gzipped, bzip2, zstandard) and remote sources (HTTP, HTTPS, FTP, SSH, SFTP).
     """
     import time
-    from general.constants import CommonFormattingBase
 
-    fmt = CommonFormattingBase()
+    def format_bytes(num: float) -> str:
+        """Format bytes to human readable sizes."""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB', 'PB']:
+            if num < 1024.0:
+                return f"{num:3.1f}{unit}"
+            num /= 1024.0
+        return f"{num:.1f}Y"
 
-    def pinfo(preface: str, filename: str, line_count: int, bytes_count: int, seconds: float, fmt: 'CommonFormattingBase'):
+    def format_rate(rate: float, unit: str = "") -> str:
+        """Format rate with standard units."""
+        if not rate:
+            return f"0{unit}/s"
+        return f"{format_bytes(rate)}/s"
+
+    def pinfo(preface: str, filename: str, line_count: int, bytes_count: int, seconds: float):
         """
         Print information about the file processing.
 
@@ -784,15 +795,14 @@ def main():
             The number of bytes processed.
         seconds : float
             The total time taken for processing.
-        fmt : CommonFormattingBase
-            An instance of CommonFormattingBase for formatting the output.
         """
-        rate = line_count / seconds
+        rate = line_count / seconds if seconds > 0 else 0
+        byterate = bytes_count / seconds if seconds > 0 else 0
         print(
             f"{preface} {filename}. "
-            f"{line_count:,d} lines / {fmt.pbytes(bytes_count)} "
-            f"at {fmt.prate(rate)} ({fmt.pbyterate(bytes_count/seconds)}). "
-            f"Total time: {fmt.psecs(seconds)})."
+            f"{line_count:,d} lines / {format_bytes(bytes_count)} "
+            f"at {rate:,.1f}/s ({format_rate(byterate)}). "
+            f"Total time: {seconds:0.2f} Secs."
         )
         pass  # for auto-indentation
 
@@ -832,7 +842,7 @@ def main():
                     bytes_count += len(line)
                     pass  # for auto-indentation
                 # Print final reading statistics
-                pinfo("FINISHED Reading.", reader.filename, line_count, bytes_count, time.monotonic() - t0, fmt)
+                pinfo("FINISHED Reading.", reader.filename, line_count, bytes_count, time.monotonic() - t0)
                 pass  # for auto-indentation
             pass  # for auto-indentation
         pass  # for auto-indentation
@@ -852,7 +862,7 @@ def main():
                         writer.write(line)
                         pass  # for auto-indentation
                     # Print final writing statistics
-                    pinfo("FINISHED Writing.", writer.filename, line_count, bytes_count, time.monotonic() - t0, fmt)
+                    pinfo("FINISHED Writing.", writer.filename, line_count, bytes_count, time.monotonic() - t0)
                     pass  # for auto-indentation
                 pass  # for auto-indentation
             pass  # for auto-indentation
@@ -862,3 +872,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
