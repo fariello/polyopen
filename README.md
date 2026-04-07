@@ -62,25 +62,25 @@ Because `polyopen` is designed absolutely for stream-based parsing, it supports 
 ### Supported Stream Formats
 | Format / Protocol | Read? | Write? | Append? | Notes |
 | :--- | :---: | :---: | :---: | :--- |
-| Plain Text (`.txt`, `.csv`, etc.) | Yes | Yes | Yes | StandardUTF-8 streams |
-| Zstandard (`.zst`) | Yes | Yes | Yes | Extremely fast, supports concatenated frames |
-| GZIP (`.gz`) | Yes | Yes | Yes | Standard Python `gzip` bindings |
-| BZIP2 (`.bz2`) | Yes | Yes | Yes | Standard Python `bz2` bindings |
-| LZMA (`.xz`) | Yes | Yes | Yes | Standard Python `lzma` bindings |
-| Local File (`file://` or implicit) | Yes | Yes | Yes | Standard local OS operations, handles backup `.bu` rotation |
-| SSH / SFTP (`ssh://`, `sftp://`) | Yes | Yes | Yes | Fully authenticated remote transfer, supports backups |
-| FTP (`ftp://`) | Yes | Yes | Yes | Standard FTP transfer, supports backups |
-| HTTP / HTTPS (`http://`, `https://`) | Yes | No | No | Protected stream-fetching only, throws `ReadOnlyProtocolError` on write |
+| Plain Text (`.txt`, `.csv`, etc.) | ✓ | ✓ | ✓ | StandardUTF-8 streams |
+| Zstandard (`.zst`) | ✓ | ✓ | ✓ | Extremely fast, supports concatenated frames |
+| GZIP (`.gz`) | ✓ | ✓ | ✓ | Standard Python `gzip` bindings |
+| BZIP2 (`.bz2`) | ✓ | ✓ | ✓ | Standard Python `bz2` bindings |
+| LZMA (`.xz`) | ✓ | ✓ | ✓ | Standard Python `lzma` bindings |
+| Local File (`file://` or implicit) | ✓ | ✓ | ✓ | Standard local OS operations, handles backup `.bu` rotation |
+| SSH / SFTP (`ssh://`, `sftp://`) | ✓ | ✓ | ✓ | Fully authenticated remote transfer, supports backups |
+| FTP (`ftp://`) | ✓ | ✓ | ✓ | Standard FTP transfer, supports backups |
+| HTTP / HTTPS (`http://`, `https://`) | ✓ | ✘ | ✘ | Protected stream-fetching only, throws `ReadOnlyProtocolError` on write |
 
 ### Unsupported Archive Formats
 These formats are **Archival Containers** (miniature file systems), not uniform text streams. If passed to `polyopen`, they will instantly raise an `UnsupportedArchiveError` to protect you from inadvertently corrupting them.
 
 | Container Extension | Supported? | Reason | Alternative |
 | --- | :---: | --- | --- |
-| `.zip` | No | Writing streams overwrites the Central Directory index map, corrupting the file. | Use Python's built-in `zipfile` |
-| `.tar` | No | Contains POSIX file headers and multiple internal hierarchy layers. | Use Python's built-in `tarfile` |
-| `.rar`, `.7z` | No | Binary filesystem maps rather than single-file text compression streams. | Use 3rd party archive managers |
-| `.tar.gz`, `.tgz` | No | Sits underneath a `.tar` extraction layer. | Use Python's built-in `tarfile` |
+| `.zip` | ✘ | Writing streams overwrites the Central Directory index map, corrupting the file. | Use Python's built-in `zipfile` |
+| `.tar` | ✘ | Contains POSIX file headers and multiple internal hierarchy layers. | Use Python's built-in `tarfile` |
+| `.rar`, `.7z` | ✘ | Binary filesystem maps rather than single-file text compression streams. | Use 3rd party archive managers |
+| `.tar.gz`, `.tgz` | ✘ | Sits underneath a `.tar` extraction layer. | Use Python's built-in `tarfile` |
 
 ### Advanced Networking
 
