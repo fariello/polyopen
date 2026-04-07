@@ -81,3 +81,42 @@ def test_backup_rotation(tmp_path):
     
     with open(backup_path, 'r') as f:
         assert f.read() == "First.\n"
+
+@pytest.mark.parametrize("ext", [".gz", ".bz2", ".zst", ".xz"])
+def test_rigorous_line_chunking(tmp_path, ext):
+    """
+    Rigorously assess how CPython buffers streaming algorithms across native memory constraints.
+    Default IO chunks are routinely 131,072 bytes. This suite generates payloads explicitly 
+    engineered to collide cleanly across chunk frames.
+    """
+    filepath = str(tmp_path / f"rigorous_chunk_test{ext}")
+    
+    # Constructing lines to meet explicit chunking edge logic
+    CHUNK_SIZE = 131072
+    lines_to_write = [
+        "A short line with whitespace. \n", # 1. Less than chunk size
+        "A" * int(CHUNK_SIZE * 0.8) + "\n", # Fill up end of chunk 1
+        "B" * int(CHUNK_SIZE * 0.5) + " words \n", # 2. Starts in chunk 1, ends in chunk 2
+        "C" * int(CHUNK_SIZE * 2.5) + " traversing \n", # 3. Starts in chunk 2, traverses chunk 3, ends in 4
+        "Short middle line \n",
+        "Another string with random whitespaces \n",
+        "More string padding to shift the buffer windows around \n",
+        "Small 8th line \n",
+        "D" * int(CHUNK_SIZE * 0.3) + " testing \n",
+        "E" * 500 + "\n",
+        "F" * 200 + "\n",
+        "G" * int(CHUNK_SIZE * 1.5) + " final line \n" # 4. Ends file spanning across final chunk
+    ]
+    
+    with PolyWriter(filepath) as writer:
+        for line in lines_to_write:
+            writer.write(line)
+            
+    read_data = []
+    with PolyReader(filepath) as reader:
+        for line in reader:
+             read_data.append(line)
+             
+    # Asserting exact identical retrieval
+    assert len(read_data) == 12
+    assert read_data == lines_to_write
